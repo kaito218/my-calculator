@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="かんたん計算" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <title>かんたん計算</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f3f4f6;
+      color: #111827;
+      padding: 24px;
+    }
+    .app {
+      width: min(100%, 420px);
+      background: white;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 16px 50px rgba(0,0,0,.12);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .sub {
+      margin: 0 0 22px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    label {
+      font-size: 14px;
+      color: #4b5563;
+    }
+    input {
+      width: 100%;
+      font-size: 24px;
+      padding: 15px 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 16px;
+      background: #f9fafb;
+      color: #111827;
+      outline: none;
+    }
+    input:focus {
+      border-color: #111827;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 16px 8px;
+      font-size: 24px;
+      font-weight: 700;
+      background: #111827;
+      color: white;
+      touch-action: manipulation;
+    }
+    button:active {
+      transform: scale(.97);
+      opacity: .85;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 18px;
+      background: #eef2ff;
+    }
+    .result-label {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+    #result {
+      font-size: 32px;
+      font-weight: 800;
+      word-break: break-all;
+    }
+    .clear {
+      width: 100%;
+      margin-top: 12px;
+      font-size: 16px;
+      background: #e5e7eb;
+      color: #111827;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1020; color: #f9fafb; }
+      .app { background: #111827; }
+      .sub, label, .result-label { color: #9ca3af; }
+      input {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f9fafb;
+      }
+      .result { background: #1e293b; }
+      .clear { background: #374151; color: #f9fafb; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>かんたん計算</h1>
+    <p class="sub">iPhoneのホーム画面から使えるミニ計算アプリ</p>
+
+    <div class="field">
+      <label for="a">数字 A</label>
+      <input id="a" type="number" inputmode="decimal" placeholder="例: 12.5" />
+    </div>
+
+    <div class="field">
+      <label for="b">数字 B</label>
+      <input id="b" type="number" inputmode="decimal" placeholder="例: 3" />
+    </div>
+
+    <div class="buttons">
+      <button data-op="+">＋</button>
+      <button data-op="-">−</button>
+      <button data-op="*">×</button>
+      <button data-op="/">÷</button>
+    </div>
+
+    <section class="result">
+      <div class="result-label">結果</div>
+      <div id="result">—</div>
+    </section>
+
+    <button class="clear" id="clear">クリア</button>
+  </main>
+
+  <script>
+    const a = document.getElementById('a');
+    const b = document.getElementById('b');
+    const result = document.getElementById('result');
+
+    function calculate(op) {
+      const x = Number(a.value);
+      const y = Number(b.value);
+
+      if (a.value === '' || b.value === '') {
+        result.textContent = '数字を2つ入力してください';
+        return;
+      }
+
+      let value;
+      if (op === '+') value = x + y;
+      if (op === '-') value = x - y;
+      if (op === '*') value = x * y;
+      if (op === '/') {
+        if (y === 0) {
+          result.textContent = '0では割れません';
+          return;
+        }
+        value = x / y;
+      }
+
+      result.textContent = Number.isInteger(value)
+        ? value.toLocaleString('ja-JP')
+        : Number(value.toFixed(10)).toLocaleString('ja-JP');
+    }
+
+    document.querySelectorAll('[data-op]').forEach(btn => {
+      btn.addEventListener('click', () => calculate(btn.dataset.op));
+    });
+
+    document.getElementById('clear').addEventListener('click', () => {
+      a.value = '';
+      b.value = '';
+      result.textContent = '—';
+      a.focus();
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
