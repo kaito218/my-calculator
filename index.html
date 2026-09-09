@@ -4,30 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#ffffff" />
-  <title>割り勘計算</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>割り勘計算+</title>
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f4f4f4;
+      background: #f3f4f6;
       color: #111;
     }
     .wrap {
       max-width: 520px;
       margin: 0 auto;
-      padding: 24px 16px 40px;
+      padding: 22px 16px 42px;
     }
     h1 {
-      margin: 8px 0 20px;
+      margin: 8px 0 6px;
       font-size: 28px;
       text-align: center;
+    }
+    .version {
+      text-align: center;
+      color: #777;
+      font-size: 12px;
+      margin-bottom: 18px;
     }
     .card {
       background: #fff;
       border-radius: 18px;
       padding: 18px;
       box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
     }
     label {
       display: block;
@@ -42,6 +52,21 @@
       border-radius: 12px;
       background: #fff;
     }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .checkbox-row input {
+      width: auto;
+      transform: scale(1.3);
+    }
+    .extra-box {
+      display: none;
+      margin-top: 12px;
+      padding-top: 4px;
+    }
     button {
       width: 100%;
       margin-top: 18px;
@@ -53,6 +78,11 @@
       cursor: pointer;
       background: #111;
       color: white;
+    }
+    .secondary {
+      background: #e8e8e8;
+      color: #111;
+      margin-top: 10px;
     }
     .result {
       margin-top: 20px;
@@ -75,7 +105,7 @@
       margin-top: 14px;
       text-align: left;
       font-size: 15px;
-      line-height: 1.7;
+      line-height: 1.8;
     }
     .error {
       color: #b00020;
@@ -85,7 +115,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>割り勘計算</h1>
+    <h1>割り勘計算+</h1>
+    <div class="version">Version 3</div>
 
     <div class="card">
       <label for="total">合計金額</label>
@@ -102,7 +133,18 @@
         <option value="1000">1000円単位で切り上げ</option>
       </select>
 
+      <div class="checkbox-row">
+        <input id="extraToggle" type="checkbox" onchange="toggleExtra()" />
+        <label for="extraToggle" style="margin:0;">1人だけ多めに払う</label>
+      </div>
+
+      <div id="extraBox" class="extra-box">
+        <label for="extraAmount">その人が多めに払う金額</label>
+        <input id="extraAmount" type="number" inputmode="numeric" min="0" placeholder="例：2000" />
+      </div>
+
       <button onclick="calculate()">計算する</button>
+      <button class="secondary" onclick="resetForm()">リセット</button>
 
       <div id="result" class="result">
         <div class="sub">金額と人数を入力してください</div>
@@ -111,14 +153,23 @@
   </div>
 
   <script>
+    const APP_VERSION = "3";
+
     function yen(n) {
-      return new Intl.NumberFormat('ja-JP').format(n) + '円';
+      return new Intl.NumberFormat('ja-JP').format(Math.round(n)) + '円';
+    }
+
+    function toggleExtra() {
+      const checked = document.getElementById('extraToggle').checked;
+      document.getElementById('extraBox').style.display = checked ? 'block' : 'none';
     }
 
     function calculate() {
       const total = Number(document.getElementById('total').value);
       const people = Number(document.getElementById('people').value);
       const unit = Number(document.getElementById('rounding').value);
+      const extraEnabled = document.getElementById('extraToggle').checked;
+      const extraAmount = Number(document.getElementById('extraAmount').value || 0);
       const result = document.getElementById('result');
 
       if (!total || total <= 0) {
@@ -131,22 +182,90 @@
         return;
       }
 
-      const exact = total / people;
-      const perPerson = unit === 1 ? Math.ceil(exact) : Math.ceil(exact / unit) * unit;
-      const collected = perPerson * people;
+      if (extraEnabled && people < 2) {
+        result.innerHTML = '<div class="error">「1人だけ多めに払う」は2人以上で使ってください</div>';
+        return;
+      }
+
+      if (extraEnabled && extraAmount < 0) {
+        result.innerHTML = '<div class="error">多めに払う金額は0円以上で入力してください</div>';
+        return;
+      }
+
+      let normalPerPerson;
+      let specialPerson = null;
+      let collected;
+
+      if (extraEnabled && extraAmount > 0) {
+        const remaining = total - extraAmount;
+
+        if (remaining <= 0) {
+          result.innerHTML = '<div class="error">多めに払う金額は合計金額より小さくしてください</div>';
+          return;
+        }
+
+        const exactNormal = remaining / people;
+        normalPerPerson = unit === 1
+          ? Math.ceil(exactNormal)
+          : Math.ceil(exactNormal / unit) * unit;
+
+        specialPerson = normalPerPerson + extraAmount;
+        collected = normalPerPerson * (people - 1) + specialPerson;
+      } else {
+        const exact = total / people;
+        normalPerPerson = unit === 1
+          ? Math.ceil(exact)
+          : Math.ceil(exact / unit) * unit;
+        collected = normalPerPerson * people;
+      }
+
       const difference = collected - total;
 
-      result.innerHTML = `
-        <div class="sub">1人あたり</div>
-        <div class="big">${yen(perPerson)}</div>
-        <div class="details">
-          合計金額：${yen(total)}<br>
-          人数：${people}人<br>
-          正確な割り勘：${yen(Math.round(exact))} / 人<br>
-          集金合計：${yen(collected)}<br>
-          余り：${yen(difference)}
-        </div>
-      `;
+      if (specialPerson !== null) {
+        result.innerHTML = `
+          <div class="sub">通常の人</div>
+          <div class="big">${yen(normalPerPerson)}</div>
+          <div class="sub">多めに払う1人：<strong>${yen(specialPerson)}</strong></div>
+          <div class="details">
+            合計金額：${yen(total)}<br>
+            人数：${people}人<br>
+            多め分：${yen(extraAmount)}<br>
+            集金合計：${yen(collected)}<br>
+            余り：${yen(difference)}
+          </div>
+        `;
+      } else {
+        result.innerHTML = `
+          <div class="sub">1人あたり</div>
+          <div class="big">${yen(normalPerPerson)}</div>
+          <div class="details">
+            合計金額：${yen(total)}<br>
+            人数：${people}人<br>
+            集金合計：${yen(collected)}<br>
+            余り：${yen(difference)}
+          </div>
+        `;
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('total').value = '';
+      document.getElementById('people').value = '';
+      document.getElementById('rounding').value = '100';
+      document.getElementById('extraToggle').checked = false;
+      document.getElementById('extraAmount').value = '';
+      toggleExtra();
+      document.getElementById('result').innerHTML =
+        '<div class="sub">金額と人数を入力してください</div>';
+    }
+
+    // If this page was opened from an older versioned URL, rewrite it to the current version once.
+    const params = new URLSearchParams(location.search);
+    const current = params.get('v');
+    if (current !== APP_VERSION) {
+      params.set('v', APP_VERSION);
+      const newUrl = location.pathname + '?' + params.toString() + location.hash;
+      history.replaceState(null, '', newUrl);
     }
   </script>
 </body>
